@@ -413,20 +413,12 @@ line-height:1.5;border-radius:6px;">
             }
         }
 
-        // Fetch data from Google API
+        // Fetch data from API
         async function fetchSheetData(sheetName) {
-    try {
-        const url = `${API_BASE}?sheet=${sheetName}`;
-        console.log("Fetching episode data:", url);
-
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("API request failed");
-
-        return await response.json();
-    } catch (error) {
-        console.error("Episode Fetch Error:", error);
-        return [];
-    }
+    const url = `${API_BASE}?sheet=${encodeURIComponent(sheetName)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    return json.data ? json.data : json;
 }
 
         // Display episode information
@@ -596,4 +588,4 @@ line-height:1.5;border-radius:6px;">
         });
     </script>
 </body>
-</html>
+    </html>
