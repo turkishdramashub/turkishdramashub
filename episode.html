@@ -358,18 +358,8 @@ line-height:1.5;border-radius:6px;">
        epicdramasgrammar@gmail.com
     </a>
 </div>
-<script>
-const API_BASE = "https://script.google.com/macros/s/AKfycbybKBa5Xo9p_EKN2FR42CzCWdMR43uwWI0JjP3UepQKdORu0Bxc0MPkLNidToglgQuT/exec";
 
-const SHEET_CONFIG = {
-    main: "main",
-    trending: "trending",
-    newReleases: "newReleases",
-    topRated: "topRated"
-};
-</script>
-
-   
+    <script src="sheet-config.js"></script>
     <script>
         // DOM elements
         const videoPlayer = document.getElementById('video-player');
@@ -423,14 +413,18 @@ const SHEET_CONFIG = {
             }
         }
 
-        // Fetch data from Google Sheets
+        // Fetch data from Google API
         async function fetchSheetData(sheetName) {
     try {
         const url = `${API_BASE}?sheet=${sheetName}`;
+        console.log("Fetching episode data:", url);
+
         const response = await fetch(url);
+        if (!response.ok) throw new Error("API request failed");
+
         return await response.json();
     } catch (error) {
-        console.error("EPISODE PAGE API ERROR:", error);
+        console.error("Episode Fetch Error:", error);
         return [];
     }
 }
