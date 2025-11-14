@@ -1,9 +1,8 @@
-// ========= GOOGLE SCRIPT API CONFIG =========
-
-// YOUR GOOGLE SCRIPT API BASE URL
+// ===============================
+// GOOGLE SCRIPT API CONFIG
+// ===============================
 const API_BASE = "https://script.google.com/macros/s/AKfycbybKBa5Xo9p_EKN2FR42CzCWdMR43uwWI0JjP3UepQKdORu0Bxc0MPkLNidToglgQuT/exec";
 
-// SHEET NAMES
 const SHEET_CONFIG = {
     main: "main",
     trending: "trending",
@@ -11,54 +10,58 @@ const SHEET_CONFIG = {
     topRated: "topRated"
 };
 
-// API FETCH FUNCTION
-async function fetchSheetData(sheetName) {
-    try {
-        const url = `${API_BASE}?sheet=${sheetName}`;
-        console.log("Fetching:", url);
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        console.log(sheetName, "Loaded:", data);
-        return data;
-    } catch (error) {
-        console.error("API ERROR:", error);
-        return [];
-    }
-}
-
-
-// =================== YOUR ORIGINAL CODE (FIXED) ===================
-
-// Global data storage
+// ===============================
+// GLOBAL VARIABLES
+// ===============================
 let allEpisodes = [];
 let trendingEpisodes = [];
 let newReleases = [];
 let topRated = [];
 
-// DOM elements
+// ===============================
+// DOM ELEMENTS
+// ===============================
 const trendingSlider = document.getElementById('trending-slider');
 const newReleasesSlider = document.getElementById('new-releases-slider');
 const topRatedSlider = document.getElementById('top-rated-slider');
 
-// Search Overlay Elements
+// search overlay related elements
 let searchOverlay, searchClose, searchTrigger, searchInputMain, searchResultsMain, searchResultGrid, resultCount;
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('Website loaded successfully');
+// ===============================
+// PAGE INITIALIZATION
+// ===============================
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("INDEX PAGE LOADED");
     loadAllData();
     setupEventListeners();
     setupSliders();
     initializeSearchOverlay();
 });
 
-// Load data from Google Sheets
+// ===============================
+// FETCH DATA FROM GOOGLE SCRIPT API
+// ===============================
+async function fetchSheetData(sheetName) {
+    try {
+        const url = `${API_BASE}?sheet=${sheetName}`;
+        console.log("Fetching:", url);
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("API Request Failed");
+
+        return await response.json();  
+    } catch (error) {
+        console.error("API ERROR:", error);
+        return []; 
+    }
+}
+
+// ===============================
+// LOAD ALL DATA
+// ===============================
 async function loadAllData() {
     try {
-        console.log('Loading all data...');
-
         showLoadingState(trendingSlider);
         showLoadingState(newReleasesSlider);
         showLoadingState(topRatedSlider);
@@ -72,44 +75,14 @@ async function loadAllData() {
         populateSlider(newReleasesSlider, newReleases);
         populateSlider(topRatedSlider, topRated);
 
-    } catch (error) {
-        console.error('Error loading data:', error);
-
-        showErrorState(trendingSlider);
-        showErrorState(newReleasesSlider);
-        showErrorState(topRatedSlider);
-
-        loadSampleData();
+    } catch (e) {
+        console.error("Loading data failed", e);
     }
 }
 
-
-// Sample data fallback
-function loadSampleData() {
-    console.log("Loading sample data... (fallback)");
-
-    const sampleData = [
-        {
-            "Title": "Loading Failed",
-            "Episode": "0",
-            "Description": "Sample data loaded because Google API failed",
-            "Thumbnail": "https://via.placeholder.com/250x140/333333/666666?text=Sample",
-            "Slug": "sample"
-        }
-    ];
-
-    allEpisodes = sampleData;
-    trendingEpisodes = sampleData;
-    newReleases = sampleData;
-    topRated = sampleData;
-
-    populateSlider(trendingSlider, sampleData);
-    populateSlider(newReleasesSlider, sampleData);
-    populateSlider(topRatedSlider, sampleData);
-}
-
-
-// Loading state
+// ===============================
+// LOADING / ERROR STATES
+// ===============================
 function showLoadingState(slider) {
     slider.innerHTML = `
         <div class="loading">
@@ -118,148 +91,135 @@ function showLoadingState(slider) {
     `;
 }
 
-// Error state
 function showErrorState(slider) {
     slider.innerHTML = `
         <div class="error">
-            <i class="fas fa-exclamation-triangle"></i> Failed to load content
+            <i class="fas fa-exclamation-triangle"></i> Failed to load
         </div>
     `;
 }
 
-
-// Populate sliders
+// ===============================
+// POPULATE SLIDERS
+// ===============================
 function populateSlider(slider, data) {
     slider.innerHTML = "";
 
     if (!data || data.length === 0) {
-        slider.innerHTML = `
-            <div class="no-content">
-                <i class="fas fa-film"></i> No content available
-            </div>
-        `;
+        showErrorState(slider);
         return;
     }
 
     data.forEach(item => {
-        const sliderItem = document.createElement("div");
-        sliderItem.classList.add("slider-item");
-
-        sliderItem.innerHTML = `
-            <img src="${item.Thumbnail}" 
-                 class="slider-img"
-                 onerror="this.src='https://via.placeholder.com/250x140/333333/ffffff?text=No+Image'">
+        const div = document.createElement("div");
+        div.className = "slider-item";
+        div.innerHTML = `
+            <img src="${item.Thumbnail}" class="slider-img">
             <div class="slider-content">
                 <h3 class="slider-title">${item.Title}</h3>
                 <p class="slider-episode">Episode ${item.Episode}</p>
             </div>
         `;
-
-        slider.appendChild(sliderItem);
+        slider.appendChild(div);
     });
 }
 
-
-// Event Listeners
-function setupEventListeners() {
-    const heroButton = document.querySelector('.hero-button');
-
-    if (heroButton) {
-        heroButton.addEventListener('click', () => {
-            document.querySelector('.section').scrollIntoView({ behavior: 'smooth' });
-        });
-    }
-
-    window.addEventListener("scroll", () => {
-        const header = document.querySelector("header");
-        header.classList.toggle("scrolled", window.scrollY > 100);
-    });
-}
-
-
-// Slider Navigation
+// ===============================
+// SLIDER BUTTONS
+// ===============================
 function setupSliders() {
     document.querySelectorAll('.slider-container').forEach(container => {
-        const slider = container.querySelector('.slider');
-        const prevBtn = container.querySelector('.slider-nav.prev');
-        const nextBtn = container.querySelector('.slider-nav.next');
-
-        if (!slider) return;
+        const slider = container.querySelector(".slider");
+        const prev = container.querySelector(".prev");
+        const next = container.querySelector(".next");
 
         let scrollAmount = 0;
+        const step = 250;
 
-        prevBtn.addEventListener("click", () => {
-            scrollAmount -= 250;
-            slider.scrollTo({ left: scrollAmount, behavior: "smooth" });
-        });
+        prev.onclick = () => {
+            scrollAmount = Math.max(scrollAmount - step, 0);
+            slider.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+        };
 
-        nextBtn.addEventListener("click", () => {
-            scrollAmount += 250;
-            slider.scrollTo({ left: scrollAmount, behavior: "smooth" });
-        });
+        next.onclick = () => {
+            scrollAmount += step;
+            slider.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+        };
     });
 }
 
-
-// Search overlay
+// ===============================
+// SEARCH SYSTEM
+// ===============================
 function initializeSearchOverlay() {
-    searchOverlay = document.getElementById('searchOverlay');
-    searchInputMain = document.getElementById('searchInputMain');
-    searchResultsMain = document.getElementById('searchResultsMain');
-    searchResultGrid = document.getElementById('searchResultGrid');
-    resultCount = document.getElementById('resultCount');
-    searchTrigger = document.querySelector('.search-trigger');
-    searchClose = document.getElementById('searchClose');
+    searchOverlay = document.getElementById("searchOverlay");
+    searchInputMain = document.getElementById("searchInputMain");
+    searchResultsMain = document.getElementById("searchResultsMain");
+    searchResultGrid = document.getElementById("searchResultGrid");
+    searchTrigger = document.querySelector(".search-trigger");
+    searchClose = document.getElementById("searchClose");
+    resultCount = document.getElementById("resultCount");
 
-    if (!searchOverlay) return;
-
-    searchTrigger.addEventListener("click", () => {
+    searchTrigger.onclick = () => {
         searchOverlay.classList.add("active");
         searchInputMain.focus();
-    });
+    };
 
-    searchClose.addEventListener("click", closeSearchOverlay);
+    searchClose.onclick = () => {
+        searchOverlay.classList.remove("active");
+        searchInputMain.value = "";
+        searchResultsMain.classList.remove("active");
+    };
 
-    searchInputMain.addEventListener("input", e => {
-        const query = e.target.value.toLowerCase().trim();
-        const results = allEpisodes.filter(ep =>
+    searchInputMain.oninput = () => {
+        let query = searchInputMain.value.toLowerCase().trim();
+
+        if (query.length < 1) {
+            searchResultsMain.classList.remove("active");
+            return;
+        }
+
+        let results = allEpisodes.filter(ep =>
             ep.Title.toLowerCase().includes(query)
         );
-        displaySearchResultsMain(results);
-    });
+
+        displaySearchResults(results);
+    };
 }
 
-function closeSearchOverlay() {
-    searchOverlay.classList.remove("active");
-}
-
-function displaySearchResultsMain(results) {
+function displaySearchResults(results) {
     searchResultGrid.innerHTML = "";
 
     if (results.length === 0) {
         searchResultGrid.innerHTML = `
             <div class="no-results">
-                No matching results
-            </div>`;
+                <i class="fas fa-search"></i>
+                No dramas found
+            </div>
+        `;
+        searchResultsMain.classList.add("active");
         return;
     }
 
-    results.forEach(item => {
-        const div = document.createElement("div");
-        div.classList.add("search-result-item-side");
+    resultCount.innerHTML = `Found ${results.length} results`;
 
+    results.forEach(item => {
+        let div = document.createElement("div");
+        div.className = "search-result-item-side";
         div.innerHTML = `
-            <img src="${item.Thumbnail}" class="result-img-side">
-            <div>
-                <h3>${item.Title}</h3>
-                <p>Episode ${item.Episode}</p>
+            <div class="result-thumbnail-side">
+                <img src="${item.Thumbnail}">
+            </div>
+            <div class="result-info-side">
+                <div class="result-title-side">${item.Title}</div>
+                <div class="result-episode-side">Ep ${item.Episode}</div>
             </div>
         `;
-
-        div.addEventListener("click", () => {
+        div.onclick = () => {
             window.location.href = `episode.html?ep=${item.Slug}`;
-        });
-
+        };
         searchResultGrid.appendChild(div);
     });
-}
+
+    searchResultsMain.classList.add("active");
+    }
