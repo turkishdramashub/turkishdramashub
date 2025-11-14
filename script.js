@@ -17,7 +17,7 @@ let searchOverlay, searchClose, searchTrigger, searchInputMain, searchResultsMai
 // Initialize App
 document.addEventListener("DOMContentLoaded", function () {
     console.log("Website loaded...");
-    setupEventListeners();
+    setupEventListeners();   // <-- restored
     setupSliders();
     initializeSearchOverlay();
     loadAllData();
@@ -47,28 +47,30 @@ async function fetchSheetData(sheetName) {
 // ---------------------- Load Everything ----------------------
 async function loadAllData() {
     try {
-        showLoadingState(trendingSlider);
-        showLoadingState(newReleasesSlider);
-        showLoadingState(topRatedSlider);
+        if (trendingSlider) showLoadingState(trendingSlider);
+        if (newReleasesSlider) showLoadingState(newReleasesSlider);
+        if (topRatedSlider) showLoadingState(topRatedSlider);
 
         allEpisodes = await fetchSheetData(SHEET_CONFIG.main);
         trendingEpisodes = await fetchSheetData(SHEET_CONFIG.trending);
         newReleases = await fetchSheetData(SHEET_CONFIG.newReleases);
         topRated = await fetchSheetData(SHEET_CONFIG.topRated);
 
-        if (!trendingEpisodes.length) trendingEpisodes = allEpisodes.slice(0, 10);
-        if (!newReleases.length) newReleases = allEpisodes.slice(0, 10);
-        if (!topRated.length) topRated = allEpisodes.slice(0, 10);
+        // Fallbacks
+        if (!trendingEpisodes || !trendingEpisodes.length) trendingEpisodes = allEpisodes.slice(0, 10);
+        if (!newReleases || !newReleases.length) newReleases = allEpisodes.slice(0, 10);
+        if (!topRated || !topRated.length) topRated = allEpisodes.slice(0, 10);
 
-        populateSlider(trendingSlider, trendingEpisodes);
-        populateSlider(newReleasesSlider, newReleases);
-        populateSlider(topRatedSlider, topRated);
+        // Populate sliders (check element exists)
+        if (trendingSlider) populateSlider(trendingSlider, trendingEpisodes);
+        if (newReleasesSlider) populateSlider(newReleasesSlider, newReleases);
+        if (topRatedSlider) populateSlider(topRatedSlider, topRated);
 
     } catch (error) {
         console.error("Load error:", error);
-        showErrorState(trendingSlider);
-        showErrorState(newReleasesSlider);
-        showErrorState(topRatedSlider);
+        if (trendingSlider) showErrorState(trendingSlider);
+        if (newReleasesSlider) showErrorState(newReleasesSlider);
+        if (topRatedSlider) showErrorState(topRatedSlider);
     }
 }
 
@@ -91,7 +93,7 @@ function showErrorState(slider) {
 function populateSlider(slider, data) {
     slider.innerHTML = "";
 
-    if (!data.length) {
+    if (!data || !data.length) {
         slider.innerHTML = `<div class="no-content">
             <i class="fas fa-film"></i> No content available
         </div>`;
@@ -103,6 +105,7 @@ function populateSlider(slider, data) {
             ? item.Thumbnail
             : "https://via.placeholder.com/250x140/333333/666666?text=No+Image";
 
+        // Use rating if provided, else N/A
         const rating = item.Rating ? item.Rating : "N/A";
 
         const div = document.createElement("div");
@@ -113,7 +116,7 @@ function populateSlider(slider, data) {
                 onerror="this.src='https://via.placeholder.com/250x140/333333/666666?text=No+Image'">
 
             <div class="slider-content">
-                <h3 class="slider-title">${item.Title}</h3>
+                <h3 class="slider-title">${item.Title || "Untitled"}</h3>
                 <p class="slider-episode">⭐ Rating: ${rating}</p>
             </div>
         `;
@@ -125,7 +128,7 @@ function populateSlider(slider, data) {
     });
 }
 
-// ---------------------- Hero + Header Scroll ----------------------
+// ---------------------- Hero + Header Scroll (restored) ----------------------
 function setupEventListeners() {
     const heroButton = document.querySelector(".hero-button");
     if (heroButton) {
@@ -136,32 +139,32 @@ function setupEventListeners() {
 
     window.addEventListener("scroll", () => {
         const header = document.querySelector("header");
+        if (!header) return;
         header.classList.toggle("scrolled", window.scrollY > 100);
     });
 }
 
-// ---------------------- Slider Buttons ----------------------
+// ---------------------- Slider setup (single clean function) ----------------------
 function setupSliders() {
     document.querySelectorAll(".slider-container").forEach((container) => {
         const slider = container.querySelector(".slider");
-        const prev = container.querySelector(".slider-nav.prev");
-        const next = container.querySelector(".slider-nav.next");
+        if (!slider) return;
 
-        if (!slider || !prev || !next) return;
+        // Always show arrows but disable everything (UI only)
+        const navButtons = container.querySelectorAll(".slider-nav");
+        if (navButtons.length) {
+            navButtons.forEach(btn => {
+                btn.style.display = "flex";     // ALWAYS visible
+                btn.style.pointerEvents = "none"; // COMPLETELY disabled (no click)
+                btn.style.opacity = "1";          // fully visible
+            });
+        }
 
-        let scrollAmount = 0;
-        const step = 250;
-
-        prev.onclick = () => {
-            scrollAmount = Math.max(scrollAmount - step, 0);
-            slider.scrollTo({ left: scrollAmount, behavior: "smooth" });
-        };
-
-        next.onclick = () => {
-            const max = slider.scrollWidth - slider.clientWidth;
-            scrollAmount = Math.min(scrollAmount + step, max);
-            slider.scrollTo({ left: scrollAmount, behavior: "smooth" });
-        };
+        // Enable swipe scroll only
+        slider.style.overflowX = "auto";
+        slider.style.overflowY = "hidden";
+        slider.style.scrollBehavior = "smooth";
+        slider.style.webkitOverflowScrolling = "touch";
     });
 }
 
@@ -175,7 +178,10 @@ function initializeSearchOverlay() {
     searchResultGrid = document.getElementById("searchResultGrid");
     resultCount = document.getElementById("resultCount");
 
+    if (!searchTrigger || !searchInputMain || !searchClose) return;
+
     searchTrigger.addEventListener("click", () => {
+        if (!searchOverlay) return;
         searchOverlay.classList.add("active");
         document.body.style.overflow = "hidden";
         searchInputMain.value = "";
@@ -187,13 +193,13 @@ function initializeSearchOverlay() {
     searchInputMain.addEventListener("input", () => {
         const q = searchInputMain.value.toLowerCase().trim();
         if (!q) {
-            searchResultsMain.classList.remove("active");
+            if (searchResultsMain) searchResultsMain.classList.remove("active");
             return;
         }
 
         const results = allEpisodes.filter(
             (ep) =>
-                ep.Title.toLowerCase().includes(q) ||
+                (ep.Title && ep.Title.toLowerCase().includes(q)) ||
                 (ep.Description && ep.Description.toLowerCase().includes(q))
         );
 
@@ -202,14 +208,17 @@ function initializeSearchOverlay() {
 }
 
 function closeSearch() {
+    if (!searchOverlay) return;
     searchOverlay.classList.remove("active");
     document.body.style.overflow = "auto";
 }
 
 function displaySearchResults(results) {
+    if (!searchResultGrid || !searchResultsMain || !resultCount) return;
+
     searchResultGrid.innerHTML = "";
 
-    if (!results.length) {
+    if (!results || !results.length) {
         searchResultGrid.innerHTML = `
             <div class="no-results">
                 <i class="fas fa-search"></i>No dramas found
@@ -229,18 +238,18 @@ function displaySearchResults(results) {
 
         div.innerHTML = `
             <div class="result-thumbnail-side">
-                <img src="${item.Thumbnail}" class="result-img-side">
-                <div class="episode-badge-side">Ep ${item.Episode}</div>
+                <img src="${item.Thumbnail || ''}" class="result-img-side" onerror="this.src='https://via.placeholder.com/120x68/333333/666666?text=No+Image'">
+                <div class="episode-badge-side">Ep ${item.Episode || '-'}</div>
             </div>
             <div class="result-info-side">
-                <div class="result-title-side">${item.Title}</div>
-                <div class="result-episode-side">Episode ${item.Episode}</div>
-                <div class="result-description-side">${item.Description}</div>
+                <div class="result-title-side">${item.Title || 'Untitled'}</div>
+                <div class="result-episode-side">Episode ${item.Episode || '-'}</div>
+                <div class="result-description-side">${item.Description || ''}</div>
             </div>
         `;
 
         div.addEventListener("click", () => {
-            window.location.href = `episode.html?ep=${item.Slug}`;
+            if (item.Slug) window.location.href = `episode.html?ep=${item.Slug}`;
         });
 
         list.appendChild(div);
@@ -248,4 +257,4 @@ function displaySearchResults(results) {
 
     searchResultGrid.appendChild(list);
     searchResultsMain.classList.add("active");
-}
+    }
